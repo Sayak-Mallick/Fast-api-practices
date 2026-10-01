@@ -27,13 +27,6 @@ while True:
         print("Error: ", error)
         time.sleep(2)
 
-
-my_posts = [
-    {"id": 1, "title": "Title of Post 1", "content": "Content of Post 1"},
-    {"id": 2, "title": "Title of Post 2", "content": "Content of Post 2"},
-]
-
-
 # Routes (Path Operations) - make path operation function as descriptive as possible
 @app.get("/")  # this decorator actually helps to define the route and HTTP method
 def health():
@@ -42,7 +35,9 @@ def health():
 
 @app.get("/posts")
 def get_posts():
-    return {"data": my_posts}
+    cursor.execute("""SELECT * FROM posts""")
+    posts = cursor.fetchall()
+    return {"data": posts}
 
 
 # @app.post("/createposts")
@@ -52,56 +47,58 @@ def get_posts():
 
 
 @app.post("/posts", status_code=status.HTTP_201_CREATED)
-def create_post(new_post: Post):
-    post_dict = new_post.dict()  # convert the Pydantic model to a dictionary
-    post_dict["id"] = randrange(0, 1000000)  # generate a random ID for the post
-    my_posts.append(post_dict)  # add the post to the list of posts
-    return {"new_post": post_dict}  # return the post as a response
-
-
-def find_post(id):
-    for p in my_posts:
-        if p["id"] == id:
-            return p
-    return None
+def create_post(post: Post):
+    cursor.execute("""INSERT INTO posts (title, content, published, ratings) VALUES (%s, %s, %s, %s) RETURNING *  """,(post.title, post.content, post.published, post.ratings))
+    new_post = cursor.fetchone()
+    conn.commit() # we need to commit after every insertion
+    return {"data": new_post}  # return the post as a response
 
 
 @app.get("/posts/latest")
 def get_latest_post():
-    post = my_posts[len(my_posts) - 1]
+    # the latest entry into the database
+    cursor.execute("""SELECT * FROM posts ORDER BY id DESC LIMIT 1""")
+    post = cursor.fetchone()
     return {"data": post}
 
 
 @app.get("/posts/{id}")  # This is not the best way to get the single data
 def get_single_post(id: int):
-    post = find_post(id)
+    cursor.execute("""SELECT * FROM posts WHERE id = %s""", (id,))
+    post = cursor.fetchone()
     if not post:
         # response.status_code = status.HTTP_404_NOT_FOUND
         # return {"message": "Post not found"}
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Post not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Post with id: {id} cannot be found"
         )
     return {"data": post}
 
 
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_post(id: int):
-    post = find_post(id)
-    if not post:
+    cursor.execute("""DELETE FROM posts WHERE id = %s RETURNING *""", (str(id),))
+    post = cursor.fetchone()
+    if post is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Post with id {id} cannot be found",
+            detail=f"Post with id {id} does not exist",
         )
-    my_posts.remove(post)
+    conn.commit() # Commit the changes to the database
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.put("/posts/{id}")
-def update_post(id: int, updated_post: Post):
-    post = find_post(id)
-    if not post:
+def update_post(id: int, post: Post):
+    cursor.execute(
+        """UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""",
+        (post.title, post.content, post.published, str(id))
+    )
+    post = cursor.fetchone()
+    if post is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"Post with id {id} cannot be found",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Post with id {id} cannot be found",
         )
-    post.update(updated_post.dict())
+    conn.commit()     # Commit changes to the database
     return {"data": post}
