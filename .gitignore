@@ -1,0 +1,8 @@
+# list all the files that we are not going to push into the repository
+.env
+.env.local
+.env.*.local
+.idea/
+.vscode/
+venv/
+__pycache__/
