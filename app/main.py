@@ -1,6 +1,10 @@
 from random import randrange
 
+import psycopg2
+import time
 from fastapi import FastAPI, HTTPException, Response, status
+from psycopg2._psycopg import cursor
+from psycopg2.extras import RealDictCursor
 from pydantic import BaseModel
 
 app = FastAPI()  # creating an instance of FastAPI
@@ -12,6 +16,17 @@ class Post(BaseModel):
     published: bool = True
     ratings: int | None = None
 
+while True:
+    try:
+        conn = psycopg2.connect(host='localhost', database='fastapi', user='postgres', password='872320022', cursor_factory=RealDictCursor)
+        cursor = conn.cursor()
+        print("✅ Database connected successfully")
+        break
+    except Exception as error:
+        print("❌ Connection to database failed")
+        print("Error: ", error)
+        time.sleep(2)
+
 
 my_posts = [
     {"id": 1, "title": "Title of Post 1", "content": "Content of Post 1"},
@@ -21,7 +36,7 @@ my_posts = [
 
 # Routes (Path Operations) - make path operation function as descriptive as possible
 @app.get("/")  # this decorator actually helps to define the route and HTTP method
-def root():
+def health():
     return {"message": "Welcome to my API"}
 
 
