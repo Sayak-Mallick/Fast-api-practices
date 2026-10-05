@@ -5,21 +5,13 @@ import time
 from fastapi import FastAPI, HTTPException, Response, status, Depends
 from psycopg2._psycopg import cursor
 from psycopg2.extras import RealDictCursor
-from pydantic import BaseModel
+from . import models, schemas
 from sqlalchemy.orm import Session
-from . import models
 from .database import engine, get_db
 
 models.Base.metadata.create_all(bind=engine)  # this will create the tables in the database if they do not exist
 
 app = FastAPI()  # creating an instance of FastAPI
-
-
-class Post(BaseModel):
-    title: str
-    content: str
-    published: bool = True
-    ratings: int | None = None
 
 # while True:
 #     try:
@@ -39,15 +31,15 @@ def health():
 
 
 @app.get("/posts")
-def get_posts(db: Session = Depends(get_db)):
+def get_posts(db: Session = Depends(get_db), response_model=schemas.PostResponse):
     # cursor.execute("""SELECT * FROM posts"""). # this will execute the SQL query to get all the posts from the database
     # posts = cursor.fetchall()
     posts = db.query(models.Post).all()
-    return {"data": posts}
+    return posts
 
 
 @app.post("/posts", status_code=status.HTTP_201_CREATED)
-def create_post(post: Post, db: Session = Depends(get_db)):
+def create_post(post: schemas.Post, db: Session = Depends(get_db), response_model=schemas.PostResponse):
     # cursor.execute("""INSERT INTO posts (title, content, published, ratings) VALUES (%s, %s, %s, %s) RETURNING *  """,(post.title, post.content, post.published, post.ratings))
     # new_post = cursor.fetchone()
     # conn.commit() # we need to commit after every insertion
@@ -68,7 +60,7 @@ def get_latest_post(db: Session = Depends(get_db)):
 
 
 @app.get("/posts/{id}")  # This is not the best way to get the single data
-def get_single_post(id: int, db: Session = Depends(get_db)):
+def get_single_post(id: int, db: Session = Depends(get_db), response_model=schemas.PostResponse):
     # cursor.execute("""SELECT * FROM posts WHERE id = %s""", (id,))
     # post = cursor.fetchone()
     post = db.query(models.Post).filter(models.Post.id == id).first()  # this will get the post with the given id from the database
@@ -93,7 +85,7 @@ def delete_post(id: int, db: Session = Depends(get_db)):
 
 
 @app.put("/posts/{id}")
-def update_post(id: int, updated_post: Post, db: Session = Depends(get_db)):
+def update_post(id: int, updated_post: schemas.Post, db: Session = Depends(get_db), response_model=schemas.PostResponse):
     post_query = db.query(models.Post).filter(models.Post.id == id)
     post = post_query.first()
 
