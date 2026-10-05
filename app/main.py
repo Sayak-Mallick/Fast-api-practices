@@ -1,7 +1,4 @@
 from random import randrange
-
-import psycopg2
-import time
 from fastapi import FastAPI, HTTPException, Response, status, Depends
 from psycopg2._psycopg import cursor
 from psycopg2.extras import RealDictCursor
@@ -40,9 +37,6 @@ def get_posts(db: Session = Depends(get_db), response_model=schemas.PostResponse
 
 @app.post("/posts", status_code=status.HTTP_201_CREATED)
 def create_post(post: schemas.Post, db: Session = Depends(get_db), response_model=schemas.PostResponse):
-    # cursor.execute("""INSERT INTO posts (title, content, published, ratings) VALUES (%s, %s, %s, %s) RETURNING *  """,(post.title, post.content, post.published, post.ratings))
-    # new_post = cursor.fetchone()
-    # conn.commit() # we need to commit after every insertion
     new_post = models.Post(**post.dict()) # this will unpack the post object into a dictionary and pass it to the Post model
     db.add(new_post) # this will add the new_post object to the database session
     db.commit()  # we need to commit after every insertion
@@ -52,7 +46,6 @@ def create_post(post: schemas.Post, db: Session = Depends(get_db), response_mode
 
 @app.get("/posts/latest")
 def get_latest_post(db: Session = Depends(get_db)):
-    # the latest entry into the database
     post = db.query(models.Post).order_by(models.Post.id.desc()).first()  # this will get the latest post from the database
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"No posts found")
@@ -73,8 +66,6 @@ def get_single_post(id: int, db: Session = Depends(get_db), response_model=schem
 
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_post(id: int, db: Session = Depends(get_db)):
-    # cursor.execute("""DELETE FROM posts WHERE id = %s RETURNING *""", (str(id),))
-    # post = cursor.fetchone()
     post = db.query(models.Post).filter(models.Post.id == id).delete(synchronize_session=False)  # this will delete the post with the given id from the database
     if not post:
         raise HTTPException(
