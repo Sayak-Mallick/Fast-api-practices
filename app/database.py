@@ -2,7 +2,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-
 SQLALCHEMY_DATABASE_URL = "postgresql://neondb_owner:npg_A8GD5TWBUENy@ep-misty-shadow-b4rki4im-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require" # this is the connection string to connect to the database. The format is: dialect+driver://username:password@host:port/database
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL) # this is the engine that will be used to connect to the database
