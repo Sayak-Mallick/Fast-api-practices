@@ -14,7 +14,7 @@ def get_posts(db: Session = Depends(get_db)):
     return posts
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model=PostModel)
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=PostResponse)
 def create_post(post: Post, db: Session = Depends(get_db)):
     new_post = PostModel(**post.dict())
     db.add(new_post)
