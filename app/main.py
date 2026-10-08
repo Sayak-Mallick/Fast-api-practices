@@ -2,7 +2,7 @@ from fastapi import Depends, FastAPI, HTTPException, Response, status
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
-from .database import engine, get_db
+from .database import Base, engine, get_db
 from .models.posts_model import Post as PostModel
 from .models.users_model import User as UserModel
 from .schemas.post_schema import Post, PostResponse
@@ -11,8 +11,7 @@ from .schemas.users_schema import User, UserResponse
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # this will create the tables in the database if they do not exist
-PostModel.metadata.create_all(bind=engine)
-UserModel.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()  # creating an instance of FastAPI
 
