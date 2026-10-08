@@ -2,15 +2,17 @@ from fastapi import Depends, FastAPI, HTTPException, Response, status
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
-from . import models
 from .database import engine, get_db
+from .models.posts_model import Post as PostModel
+from .models.users_model import User as UserModel
 from .schemas.post_schema import Post, PostResponse
 from .schemas.users_schema import User, UserResponse
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-models.Base.metadata.create_all(
-    bind=engine
-)  # this will create the tables in the database if they do not exist
+
+# this will create the tables in the database if they do not exist
+PostModel.metadata.create_all(bind=engine)
+UserModel.metadata.create_all(bind=engine)
 
 app = FastAPI()  # creating an instance of FastAPI
 
@@ -21,19 +23,15 @@ def health():
     return {"message": "Welcome to my API"}
 
 
-@app.get("/posts")
-def get_posts(db: Session = Depends(get_db), response_model=PostResponse):
-    posts = db.query(models.Post).all()
+@app.get("/posts", response_model=PostResponse)
+def get_posts(db: Session = Depends(get_db)):
+    posts = db.query(PostModel).all()
     return posts
 
 
-@app.post("/posts", status_code=status.HTTP_201_CREATED)
-def create_post(
-    post: Post,
-    db: Session = Depends(get_db),
-    response_model=PostResponse,
-):
-    new_post = models.Post(
+@app.post("/posts", status_code=status.HTTP_201_CREATED, response_model=PostResponse)
+def create_post(post: Post, db: Session = Depends(get_db)):
+    new_post = PostModel(
         **post.dict()
     )  # this will unpack the post object into a dictionary and pass it to the Post model
     db.add(new_post)  # this will add the new_post object to the database session
@@ -47,7 +45,7 @@ def create_post(
 @app.get("/posts/latest")
 def get_latest_post(db: Session = Depends(get_db)):
     post = (
-        db.query(models.Post).order_by(models.Post.id.desc()).first()
+        db.query(PostModel).order_by(PostModel.id.desc()).first()
     )  # this will get the latest post from the database
     if not post:
         raise HTTPException(
@@ -56,12 +54,10 @@ def get_latest_post(db: Session = Depends(get_db)):
     return {"data": post}
 
 
-@app.get("/posts/{id}")  # This is not the best way to get the single data
-def get_single_post(
-    id: int, db: Session = Depends(get_db), response_model=PostResponse
-):
+@app.get("/posts/{id}", response_model=PostResponse)
+def get_single_post(id: int, db: Session = Depends(get_db)):
     post = (
-        db.query(models.Post).filter(models.Post.id == id).first()
+        db.query(PostModel).filter(PostModel.id == id).first()
     )  # this will get the post with the given id from the database
     if not post:
         raise HTTPException(
@@ -74,9 +70,7 @@ def get_single_post(
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_post(id: int, db: Session = Depends(get_db)):
     post = (
-        db.query(models.Post)
-        .filter(models.Post.id == id)
-        .delete(synchronize_session=False)
+        db.query(PostModel).filter(PostModel.id == id).delete(synchronize_session=False)
     )  # this will delete the post with the given id from the database
     if not post:
         raise HTTPException(
@@ -87,14 +81,13 @@ def delete_post(id: int, db: Session = Depends(get_db)):
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@app.put("/posts/{id}")
+@app.put("/posts/{id}", response_model=PostResponse)
 def update_post(
     id: int,
     updated_post: Post,
     db: Session = Depends(get_db),
-    response_model=PostResponse,
 ):
-    post_query = db.query(models.Post).filter(models.Post.id == id)
+    post_query = db.query(PostModel).filter(PostModel.id == id)
     post = post_query.first()
 
     if post is None:
@@ -108,9 +101,9 @@ def update_post(
     return {"data": post_query.first()}
 
 
-@app.get("/users")
-def get_users(db: Session = Depends(get_db), response_model=UserResponse):
-    users = db.query(models.User).all()
+@app.get("/users", response_model=UserResponse)
+def get_users(db: Session = Depends(get_db)):
+    users = db.query(UserModel).all()
     return {"data": users}
 
 
@@ -118,7 +111,7 @@ def get_users(db: Session = Depends(get_db), response_model=UserResponse):
 def create_user(user: User, db: Session = Depends(get_db)):
     hashed_password = pwd_context.hash(user.password)
     user.password = hashed_password
-    new_user = models.User(**user.dict())
+    new_user = UserModel(**user.dict())
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
