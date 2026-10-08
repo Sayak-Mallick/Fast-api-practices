@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class Post(BaseModel):
@@ -11,9 +11,11 @@ class Post(BaseModel):
 
 
 class PostResponse(BaseModel):
-    id: str
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
     title: str
     content: str
-    pubished: bool
-    ratings: int | None = None
+    published: bool
+    ratings: int
     created_at: datetime
